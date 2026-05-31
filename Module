@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Réservation Taxi</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCC2oxyOJOTCN3UxNh8Xmkw0O0gj7O5Umg&libraries=places&callback=initMap" async defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black: #0a0a0a; --white: #f8f7f4; --gold: #c9a84c; --gold-light: #e8cc84;
+      --gray: #3a3a3a; --gray-light: #8a8a8a; --surface: #141414; --surface2: #1e1e1e;
+      --border: rgba(201,168,76,0.2); --shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+    body { font-family:'DM Sans',sans-serif; background:var(--black); color:var(--white); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .taxi-widget { width:100%; max-width:520px; background:var(--surface); border:1px solid var(--border); border-radius:24px; overflow:hidden; box-shadow:var(--shadow); animation:fadeUp 0.6s ease both; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    .widget-header { background:linear-gradient(135deg,#1a1408 0%,#0f0f0f 100%); border-bottom:1px solid var(--border); padding:28px 32px; display:flex; align-items:center; gap:16px; }
+    .taxi-icon { width:48px;height:48px;background:var(--gold);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0; }
+    .header-text h2 { font-family:'Playfair Display',serif; font-size:20px; color:var(--white); line-height:1.2; }
+    .header-text p { font-size:13px; color:var(--gray-light); margin-top:2px; }
+    .steps-bar { display:flex; padding:20px 32px; gap:8px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .step { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; position:relative; }
+    .step:not(:last-child)::after { content:''; position:absolute; top:14px; right:-4px; width:calc(100% - 20px); height:1px; background:var(--border); left:50%; }
+    .step-dot { width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--gray-light);background:var(--surface);position:relative;z-index:1;transition:all 0.3s ease; }
+    .step.active .step-dot { border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,0.1); }
+    .step.done .step-dot { border-color:var(--gold);background:var(--gold);color:var(--black); }
+    .step-label { font-size:10px;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.5px;font-weight:500; }
+    .step.active .step-label { color:var(--gold-light); }
+    .panels { position:relative; }
+    .panel { display:none; padding:28px 32px; animation:slideIn 0.35s ease; }
+    .panel.active { display:block; }
+    @keyframes slideIn { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+    .field { margin-bottom:16px; }
+    .field label { display:block;font-size:11px;font-weight:600;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px; }
+    .field-inner { position:relative;display:flex;align-items:center; }
+    .field-icon { position:absolute;left:14px;font-size:16px;pointer-events:none;z-index:1; }
+    .field input,.field select,.field textarea { width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 14px 14px 44px;color:var(--white);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s; }
+    .field input:focus,.field select:focus,.field textarea:focus { border-color:var(--gold);background:rgba(201,168,76,0.04); }
+    .field input::placeholder { color:rgba(255,255,255,0.25); }
+    .field select option { background:#222; }
+    .field textarea { padding-left:44px;resize:none;height:80px; }
+    .field-row { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+    #map { width:100%;height:180px;border-radius:12px;overflow:hidden;margin-bottom:16px;border:1px solid var(--border);background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:var(--gray-light);font-size:13px; }
+
+    /* TARIF BADGE */
+    .tarif-info { display:flex;gap:10px;margin-bottom:16px; }
+    .tarif-badge { flex:1;background:var(--surface2);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;font-size:12px; }
+    .tarif-badge span { display:block;font-size:10px;color:var(--gray-light);margin-bottom:2px; }
+    .tarif-badge strong { color:var(--gold-light); }
+
+    /* TARIF MODE BADGE */
+    .tarif-mode-badge { display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;font-size:12px;margin-bottom:16px;border:1px solid; }
+    .tarif-mode-badge.jour { background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);color:var(--gold-light); }
+    .tarif-mode-badge.nuit { background:rgba(90,120,255,0.08);border-color:rgba(90,120,255,0.3);color:#8aacff; }
+    .tarif-mode-badge .mode-icon { font-size:16px; }
+
+    /* ESTIMATE CARD */
+    .estimate-card { background:linear-gradient(135deg,rgba(201,168,76,0.12),rgba(201,168,76,0.04));border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px;display:none; }
+    .estimate-card.visible { display:block;animation:fadeUp 0.4s ease; }
+    .estimate-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px; }
+    .estimate-label { font-size:11px;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px; }
+    .estimate-price { font-family:'Playfair Display',serif;font-size:38px;color:var(--gold);line-height:1; }
+    .estimate-detail { font-size:12px;color:var(--gray-light);margin-top:4px; }
+    .estimate-route { font-size:13px;color:rgba(255,255,255,0.7);padding-top:14px;border-top:1px solid var(--border); }
+    .route-row { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+    .route-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+    .route-dot.from { background:var(--gold); }
+    .route-dot.to { background:#5a9eff; }
+    .route-line { width:1px;height:16px;background:var(--border);margin-left:3px; }
+
+    /* CONFIRM */
+    .confirm-section { margin-bottom:20px; }
+    .confirm-section h3 { font-size:12px;color:var(--gray-light);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px; }
+    .confirm-row { display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05); }
+    .confirm-row:last-child { border-bottom:none; }
+    .confirm-row .key { color:var(--gray-light); }
+    .confirm-row .val { font-weight:500;text-align:right;max-width:60%; }
+
+    /* BUTTONS */
+    .btn-row { display:flex;gap:10px;margin-top:8px; }
+    .btn { flex:1;padding:15px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s ease; }
+    .btn-primary { background:var(--gold);color:var(--black); }
+    .btn-primary:hover { background:var(--gold-light);transform:translateY(-1px);box-shadow:0 8px 24px rgba(201,168,76,0.3); }
+    .btn-primary:disabled { opacity:0.4;cursor:not-allowed;transform:none; }
+    .btn-secondary { background:var(--surface2);color:var(--white);border:1px solid rgba(255,255,255,0.1); }
+    .btn-secondary:hover { background:rgba(255,255,255,0.08); }
+
+    /* SUCCESS */
+    .success-state { text-align:center;padding:48px 32px;display:none; }
+    .success-state.visible { display:block;animation:fadeUp 0.5s ease; }
+    .success-icon { width:72px;height:72px;background:rgba(201,168,76,0.15);border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 20px;animation:pulse 1s ease; }
+    @keyframes pulse { 0%{transform:scale(0.8);opacity:0} 60%{transform:scale(1.05)} 100%{transform:scale(1);opacity:1} }
+    .success-state h3 { font-family:'Playfair Display',serif;font-size:22px;color:var(--white);margin-bottom:10px; }
+    .success-state p { color:var(--gray-light);font-size:14px;line-height:1.6; }
+
+    /* SPINNER */
+    .spinner { display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:var(--black);border-radius:50%;animation:spin 0.7s linear infinite;margin-right:8px;vertical-align:middle; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .error-msg { font-size:12px;color:#ff6b6b;margin-top:6px;display:none; }
+    .error-msg.visible { display:block; }
+  </style>
+</head>
+<body>
+<div class="taxi-widget">
+
+  <div class="widget-header">
+    <div class="taxi-icon">🚖</div>
+    <div class="header-text">
+      <h2>Réserver votre taxi</h2>
+      <p>Estimation immédiate · Confirmation rapide</p>
+    </div>
+  </div>
+
+  <div class="steps-bar">
+    <div class="step active" id="step1-indicator"><div class="step-dot">1</div><div class="step-label">Trajet</div></div>
+    <div class="step" id="step2-indicator"><div class="step-dot">2</div><div class="step-label">Infos</div></div>
+    <div class="step" id="step3-indicator"><div class="step-dot">3</div><div class="step-label">Confirm.</div></div>
+  </div>
+
+  <div class="panels">
+
+    <!-- PANEL 1 : TRAJET -->
+    <div class="panel active" id="panel1">
+
+      <div class="field">
+        <label>Adresse de départ</label>
+        <div class="field-inner">
+          <span class="field-icon">📍</span>
+          <input type="text" id="origin-input" placeholder="Ex: 10 rue de la Paix, Paris"/>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Adresse d'arrivée</label>
+        <div class="field-inner">
+          <span class="field-icon">🏁</span>
+          <input type="text" id="dest-input" placeholder="Ex: Aéroport Charles de Gaulle"/>
+        </div>
+      </div>
+
+      <!-- Date/heure dès l'étape 1 pour calculer le bon tarif -->
+      <div class="field-row" style="margin-bottom:16px;">
+        <div class="field" style="margin-bottom:0;">
+          <label>Date de la course</label>
+          <div class="field-inner">
+            <span class="field-icon">📅</span>
+            <input type="date" id="inp-date-quick" onchange="updateTarifMode()"/>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Heure</label>
+          <div class="field-inner">
+            <span class="field-icon">🕐</span>
+            <input type="time" id="inp-heure-quick" onchange="updateTarifMode()"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Badge tarif appliqué -->
+      <div class="tarif-mode-badge jour" id="tarif-mode-badge">
+        <span class="mode-icon">☀️</span>
+        <span id="tarif-mode-text">Tarif de jour (7h–19h) — 2,44 € / km</span>
+      </div>
+
+      <div id="map"><span>🗺️ La carte apparaîtra ici après saisie des adresses</span></div>
+
+      <div class="tarif-info">
+        <div class="tarif-badge"><span>Prise en charge</span><strong>2,73 €</strong></div>
+        <div class="tarif-badge"><span>Tarif jour</span><strong>2,44 € / km</strong></div>
+        <div class="tarif-badge"><span>Tarif nuit / fériés</span><strong>3,63 € / km</strong></div>
+      </div>
+
+      <div class="estimate-card" id="estimate-card">
+        <div class="estimate-top">
+          <div>
+            <div class="estimate-label">Estimation du tarif</div>
+            <div class="estimate-price" id="estimate-price">—</div>
+            <div class="estimate-detail" id="estimate-detail"></div>
+          </div>
+          <div style="text-align:right;">
+            <div class="estimate-label">Distance</div>
+            <div style="font-size:20px;color:var(--white);font-weight:600;" id="estimate-distance">—</div>
+            <div class="estimate-detail" id="estimate-duration">—</div>
+          </div>
+        </div>
+        <div class="estimate-route">
+          <div class="route-row"><div class="route-dot from"></div><span id="route-from" style="font-size:12px;"></span></div>
+          <div class="route-line"></div>
+          <div class="route-row"><div class="route-dot to"></div><span id="route-to" style="font-size:12px;"></span></div>
+        </div>
+      </div>
+
+      <div class="error-msg" id="route-error">Impossible de calculer cet itinéraire. Vérifiez les adresses.</div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-step1" disabled onclick="goStep(2)">Continuer →</button>
+      </div>
+    </div>
+
+    <!-- PANEL 2 : INFOS CLIENT -->
+    <div class="panel" id="panel2">
+      <div class="field-row">
+        <div class="field">
+          <label>Prénom</label>
+          <div class="field-inner"><span class="field-icon">👤</span><input type="text" id="inp-prenom" placeholder="Marie"/></div>
+        </div>
+        <div class="field">
+          <label>Nom</label>
+          <div class="field-inner"><span class="field-icon">👤</span><input type="text" id="inp-nom" placeholder="Dupont"/></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Téléphone</label>
+        <div class="field-inner"><span class="field-icon">📞</span><input type="tel" id="inp-tel" placeholder="+33 6 12 34 56 78"/></div>
+      </div>
+      <div class="field">
+        <label>Email (confirmation)</label>
+        <div class="field-inner"><span class="field-icon">✉️</span><input type="email" id="inp-email" placeholder="marie@email.com"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Passagers</label>
+          <div class="field-inner"><span class="field-icon">👥</span>
+            <select id="inp-passagers"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Bagages</label>
+          <div class="field-inner"><span class="field-icon">🧳</span>
+            <select id="inp-bagages"><option value="0">Aucun</option><option value="1">1</option><option value="2">2</option><option value="3">3+</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Message (optionnel)</label>
+        <div class="field-inner"><span class="field-icon">💬</span><textarea id="inp-message" placeholder="Ex: Vol AF123 — besoin d'aide avec valises…"></textarea></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep(1)">← Retour</button>
+        <button class="btn btn-primary" onclick="goStep(3)">Vérifier →</button>
+      </div>
+    </div>
+
+    <!-- PANEL 3 : CONFIRMATION -->
+    <div class="panel" id="panel3">
+      <div class="confirm-section">
+        <h3>Trajet</h3>
+        <div class="confirm-row"><span class="key">Départ</span><span class="val" id="c-from"></span></div>
+        <div class="confirm-row"><span class="key">Arrivée</span><span class="val" id="c-to"></span></div>
+        <div class="confirm-row"><span class="key">Date & heure</span><span class="val" id="c-datetime"></span></div>
+        <div class="confirm-row"><span class="key">Distance</span><span class="val" id="c-dist"></span></div>
+        <div class="confirm-row"><span class="key">Durée estimée</span><span class="val" id="c-dur"></span></div>
+        <div class="confirm-row"><span class="key">Tarif appliqué</span><span class="val" id="c-tarif-mode"></span></div>
+        <div class="confirm-row"><span class="key">Tarif estimé</span><span class="val" id="c-price" style="color:var(--gold);font-size:16px;font-weight:700;"></span></div>
+      </div>
+      <div class="confirm-section">
+        <h3>Client</h3>
+        <div class="confirm-row"><span class="key">Nom</span><span class="val" id="c-name"></span></div>
+        <div class="confirm-row"><span class="key">Téléphone</span><span class="val" id="c-tel"></span></div>
+        <div class="confirm-row"><span class="key">Email</span><span class="val" id="c-email"></span></div>
+        <div class="confirm-row"><span class="key">Passagers</span><span class="val" id="c-pass"></span></div>
+        <div class="confirm-row" id="c-msg-row" style="display:none;"><span class="key">Message</span><span class="val" id="c-msg"></span></div>
+      </div>
+      <p style="font-size:12px;color:var(--gray-light);margin-bottom:18px;line-height:1.6;">
+        En confirmant, vous acceptez d'être contacté par le chauffeur. Le tarif est une estimation — le prix final peut varier légèrement selon le trafic.
+      </p>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goStep(2)">← Modifier</button>
+        <button class="btn btn-primary" id="btn-confirm" onclick="submitReservation()">✓ Confirmer la réservation</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="success-state" id="success-state">
+    <div class="success-icon">✓</div>
+    <h3>Réservation envoyée !</h3>
+    <p>Votre demande a bien été transmise.<br>Vous recevrez une confirmation par email.<br>Le chauffeur vous contactera avant la course.</p>
+    <button class="btn btn-primary" style="margin-top:24px;max-width:220px;" onclick="resetWidget()">Nouvelle réservation</button>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// CONFIGURATION TARIFAIRE
+// ============================================================
+const CONFIG = {
+  prise_en_charge: 2.73,
+  prix_jour: 2.44,        // 7h00 – 18h59
+  prix_nuit: 3.63,        // 19h00 – 6h59 + jours fériés
+  email_destinataire: "nico05.taxi@gmail.com",
+};
+
+// Jours fériés France (mise à jour annuelle recommandée)
+const FERIES = [
+  "2025-01-01","2025-04-21","2025-05-01","2025-05-08","2025-05-29",
+  "2025-06-09","2025-07-14","2025-08-15","2025-11-01","2025-11-11","2025-12-25",
+  "2026-01-01","2026-04-06","2026-05-01","2026-05-08","2026-05-14",
+  "2026-05-25","2026-07-14","2026-08-15","2026-11-01","2026-11-11","2026-12-25",
+];
+
+function isFerie(dateStr) {
+  return FERIES.includes(dateStr);
+}
+
+function getTarifKm() {
+  const dateVal = document.getElementById('inp-date-quick').value;
+  const heureVal = document.getElementById('inp-heure-quick').value;
+  if (!dateVal || !heureVal) {
+    // Par défaut heure actuelle
+    const now = new Date();
+    const h = now.getHours();
+    const todayStr = now.toISOString().split('T')[0];
+    if (isFerie(todayStr) || h < 7 || h >= 19) return CONFIG.prix_nuit;
+    return CONFIG.prix_jour;
+  }
+  if (isFerie(dateVal)) return CONFIG.prix_nuit;
+  const h = parseInt(heureVal.split(':')[0]);
+  if (h < 7 || h >= 19) return CONFIG.prix_nuit;
+  return CONFIG.prix_jour;
+}
+
+function updateTarifMode() {
+  const tarif = getTarifKm();
+  const badge = document.getElementById('tarif-mode-badge');
+  const text = document.getElementById('tarif-mode-text');
+  badge.classList.remove('jour','nuit');
+  if (tarif === CONFIG.prix_nuit) {
+    badge.classList.add('nuit');
+    text.textContent = 'Tarif de nuit / jour férié (19h–7h) — 3,63 € / km';
+  } else {
+    badge.classList.add('jour');
+    text.textContent = 'Tarif de jour (7h–19h) — 2,44 € / km';
+  }
+  // Recalcul si route déjà connue
+  if (routeData.distance > 0) recalcEstimate();
+}
+
+// ============================================================
+let mapInstance = null;
+let directionsRenderer = null;
+let routeData = { distance: 0, duration: '', distanceText: '', origin: '', dest: '' };
+
+// Initialiser date/heure par défaut
+(function() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('inp-date-quick').value =
+    `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  document.getElementById('inp-heure-quick').value =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  updateTarifMode();
+})();
+
+function initMap() {
+  mapInstance = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 46.603354, lng: 1.888334 }, zoom: 5,
+    styles: [
+      {elementType:'geometry',stylers:[{color:'#1a1a1a'}]},
+      {elementType:'labels.text.stroke',stylers:[{color:'#1a1a1a'}]},
+      {elementType:'labels.text.fill',stylers:[{color:'#8a8a8a'}]},
+      {featureType:'road',elementType:'geometry',stylers:[{color:'#333'}]},
+      {featureType:'road.highway',elementType:'geometry',stylers:[{color:'#444'}]},
+      {featureType:'water',elementType:'geometry',stylers:[{color:'#0d0d0d'}]},
+      {featureType:'poi',stylers:[{visibility:'off'}]},
+    ],
+    disableDefaultUI: true, zoomControl: true,
+  });
+
+  directionsRenderer = new google.maps.DirectionsRenderer({
+    map: mapInstance, suppressMarkers: false,
+    polylineOptions: { strokeColor: '#c9a84c', strokeWeight: 3 },
+  });
+
+  const opts = { componentRestrictions: { country: 'fr' }, types: ['geocode'] };
+  const orig = new google.maps.places.Autocomplete(document.getElementById('origin-input'), opts);
+  const dest = new google.maps.places.Autocomplete(document.getElementById('dest-input'), opts);
+  orig.addListener('place_changed', tryCalculateRoute);
+  dest.addListener('place_changed', tryCalculateRoute);
+}
+
+function tryCalculateRoute() {
+  const origin = document.getElementById('origin-input').value.trim();
+  const dest = document.getElementById('dest-input').value.trim();
+  if (!origin || !dest) return;
+  document.getElementById('route-error').classList.remove('visible');
+  const service = new google.maps.DirectionsService();
+  service.route({ origin, destination: dest, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => {
+    if (status === 'OK') {
+      directionsRenderer.setDirections(result);
+      const leg = result.routes[0].legs[0];
+      routeData = {
+        distance: leg.distance.value / 1000,
+        distanceText: leg.distance.text,
+        duration: leg.duration.text,
+        origin: leg.start_address,
+        dest: leg.end_address,
+      };
+      recalcEstimate();
+      document.getElementById('estimate-card').classList.add('visible');
+      document.getElementById('btn-step1').disabled = false;
+    } else {
+      document.getElementById('route-error').classList.add('visible');
+      document.getElementById('estimate-card').classList.remove('visible');
+      document.getElementById('btn-step1').disabled = true;
+    }
+  });
+}
+
+function recalcEstimate() {
+  const km = routeData.distance;
+  const tarifKm = getTarifKm();
+  const price = CONFIG.prise_en_charge + (km * tarifKm);
+  routeData.price = price;
+  routeData.tarifKm = tarifKm;
+  const isNuit = tarifKm === CONFIG.prix_nuit;
+  document.getElementById('estimate-price').textContent = price.toFixed(2).replace('.',',') + ' €';
+  document.getElementById('estimate-detail').textContent =
+    `2,73 € + ${km.toFixed(1)} km × ${tarifKm.toFixed(2).replace('.',',')} € (${isNuit ? 'tarif nuit/férié' : 'tarif jour'})`;
+  document.getElementById('estimate-distance').textContent = routeData.distanceText;
+  document.getElementById('estimate-duration').textContent = routeData.duration;
+  document.getElementById('route-from').textContent = routeData.origin;
+  document.getElementById('route-to').textContent = routeData.dest;
+}
+
+function goStep(n) {
+  if (n === 3) {
+    const prenom = document.getElementById('inp-prenom').value.trim();
+    const nom = document.getElementById('inp-nom').value.trim();
+    const tel = document.getElementById('inp-tel').value.trim();
+    if (!prenom || !nom || !tel) { alert('Merci de remplir les champs obligatoires (prénom, nom, téléphone).'); return; }
+
+    const dateVal = document.getElementById('inp-date-quick').value;
+    const heureVal = document.getElementById('inp-heure-quick').value;
+    const fmt = d => d.split('-').reverse().join('/');
+    const isNuit = routeData.tarifKm === CONFIG.prix_nuit;
+
+    document.getElementById('c-from').textContent = routeData.origin;
+    document.getElementById('c-to').textContent = routeData.dest;
+    document.getElementById('c-datetime').textContent = `${fmt(dateVal)} à ${heureVal || '—'}`;
+    document.getElementById('c-dist').textContent = `${routeData.distanceText} (${routeData.distance.toFixed(1)} km)`;
+    document.getElementById('c-dur').textContent = routeData.duration;
+    document.getElementById('c-tarif-mode').textContent = isNuit ? '🌙 Nuit / Jour férié (3,63 €/km)' : '☀️ Jour (2,44 €/km)';
+    document.getElementById('c-price').textContent = routeData.price.toFixed(2).replace('.',',') + ' €';
+    document.getElementById('c-name').textContent = `${prenom} ${nom}`;
+    document.getElementById('c-tel').textContent = tel;
+    document.getElementById('c-email').textContent = document.getElementById('inp-email').value || '—';
+    document.getElementById('c-pass').textContent =
+      `${document.getElementById('inp-passagers').value} passager(s), ${document.getElementById('inp-bagages').value} bagage(s)`;
+    const msg = document.getElementById('inp-message').value.trim();
+    if (msg) { document.getElementById('c-msg-row').style.display='flex'; document.getElementById('c-msg').textContent=msg; }
+  }
+
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById(`panel${i}`).classList.remove('active');
+    const ind = document.getElementById(`step${i}-indicator`);
+    ind.classList.remove('active','done');
+    if (i < n) ind.classList.add('done');
+    if (i === n) ind.classList.add('active');
+  }
+  for (let i = 1; i < n; i++) document.querySelector(`#step${i}-indicator .step-dot`).textContent = '✓';
+  document.querySelector(`#step${n}-indicator .step-dot`).textContent = n;
+  document.getElementById(`panel${n}`).classList.add('active');
+}
+
+async function submitReservation() {
+  const btn = document.getElementById('btn-confirm');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Envoi en cours…';
+
+  const dateVal = document.getElementById('inp-date-quick').value;
+  const heureVal = document.getElementById('inp-heure-quick').value;
+  const fmt = d => d.split('-').reverse().join('/');
+  const isNuit = routeData.tarifKm === CONFIG.prix_nuit;
+
+  const body = {
+    prenom: document.getElementById('inp-prenom').value,
+    nom: document.getElementById('inp-nom').value,
+    tel: document.getElementById('inp-tel').value,
+    email: document.getElementById('inp-email').value,
+    date: fmt(dateVal),
+    heure: heureVal,
+    passagers: document.getElementById('inp-passagers').value,
+    bagages: document.getElementById('inp-bagages').value,
+    message: document.getElementById('inp-message').value,
+    depart: routeData.origin,
+    arrivee: routeData.dest,
+    distance: routeData.distanceText,
+    duree: routeData.duration,
+    tarif_mode: isNuit ? 'Nuit / Jour férié (3,63 €/km)' : 'Jour (2,44 €/km)',
+    tarif_estime: routeData.price.toFixed(2) + ' €',
+  };
+
+  // === EMAILJS INTEGRATION ===
+  // Décommentez et configurez après avoir créé un compte sur emailjs.com :
+  //
+  // await emailjs.send("SERVICE_ID", "TEMPLATE_ID", {
+  //   to_email: CONFIG.email_destinataire,
+  //   from_name: `${body.prenom} ${body.nom}`,
+  //   reply_to: body.email,
+  //   message: `
+  //     📍 Départ : ${body.depart}
+  //     🏁 Arrivée : ${body.arrivee}
+  //     📅 Date : ${body.date} à ${body.heure}
+  //     📏 Distance : ${body.distance} — Durée : ${body.duree}
+  //     💶 Tarif : ${body.tarif_estime} (${body.tarif_mode})
+  //     👤 Client : ${body.prenom} ${body.nom}
+  //     📞 Tél : ${body.tel}
+  //     ✉️ Email : ${body.email}
+  //     👥 Passagers : ${body.passagers} | Bagages : ${body.bagages}
+  //     💬 Message : ${body.message || 'Aucun'}
+  //   `,
+  // });
+
+  console.log('📨 Réservation pour', CONFIG.email_destinataire, body);
+
+  // Simulation 2s (à supprimer une fois EmailJS configuré)
+  await new Promise(r => setTimeout(r, 2000));
+
+  document.querySelectorAll('.panel,.steps-bar').forEach(el => el.style.display='none');
+  document.querySelector('.widget-header').style.display='none';
+  document.getElementById('success-state').classList.add('visible');
+}
+
+function resetWidget() { location.reload(); }
+</script>
+</body>
+</html>
