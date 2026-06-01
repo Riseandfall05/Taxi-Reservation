@@ -494,31 +494,28 @@ async function submitReservation() {
     tarif_estime: routeData.price.toFixed(2) + ' €',
   };
 
-  // === EMAILJS INTEGRATION ===
-  // Décommentez et configurez après avoir créé un compte sur emailjs.com :
-  //
-  // await emailjs.send("SERVICE_ID", "TEMPLATE_ID", {
-  //   to_email: CONFIG.email_destinataire,
-  //   from_name: `${body.prenom} ${body.nom}`,
-  //   reply_to: body.email,
-  //   message: `
-  //     📍 Départ : ${body.depart}
-  //     🏁 Arrivée : ${body.arrivee}
-  //     📅 Date : ${body.date} à ${body.heure}
-  //     📏 Distance : ${body.distance} — Durée : ${body.duree}
-  //     💶 Tarif : ${body.tarif_estime} (${body.tarif_mode})
-  //     👤 Client : ${body.prenom} ${body.nom}
-  //     📞 Tél : ${body.tel}
-  //     ✉️ Email : ${body.email}
-  //     👥 Passagers : ${body.passagers} | Bagages : ${body.bagages}
-  //     💬 Message : ${body.message || 'Aucun'}
-  //   `,
-  // });
+await emailjs.init("RWWzQJPI1Yu_GjkV0");
+await emailjs.send("Reservation Taxi", "template_9shgnoa", {
+  prenom: data.prenom,
+  nom: data.nom,
+  tel: data.tel,
+  email: data.email,
+  date: data.date,
+  heure: data.heure,
+  passagers: data.passagers,
+  bagages: data.bagages,
+  message: data.message,
+  depart: data.depart,
+  arrivee: data.arrivee,
+  distance: data.distance,
+  duree: data.duree,
+  tarif_mode: data.tarif_mode,
+  tarif_estime: data.tarif_estime,
+});
 
   console.log('📨 Réservation pour', CONFIG.email_destinataire, body);
 
-  // Simulation 2s (à supprimer une fois EmailJS configuré)
-  await new Promise(r => setTimeout(r, 2000));
+  
 
   document.querySelectorAll('.panel,.steps-bar').forEach(el => el.style.display='none');
   document.querySelector('.widget-header').style.display='none';
