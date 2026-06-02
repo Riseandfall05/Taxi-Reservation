@@ -495,7 +495,10 @@ async function submitReservation() {
     tarif_estime: routeData.price.toFixed(2) + ' €',
   };
 
-await emailjs.init("RWWzQJPI1Yu_GjkV0");
+await emailjs.init({
+  publicKey: "RwWzQJPI1Yu_GjkV0",
+  blockHeadless: false,
+});
 await emailjs.send("Reservation Taxi", "template_9shgnoa", {
   prenom: data.prenom,
   nom: data.nom,
