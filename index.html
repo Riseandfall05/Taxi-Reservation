@@ -496,24 +496,29 @@ async function submitReservation() {
   };
 
   // === EMAILJS INTEGRATION ===
-  emailjs.init({ publicKey: "RWWzQJPI1Yu_GjkV0", blockHeadless: false });
-  await emailjs.send("Reservation Taxi", "template_9shgnoa", {
-    prenom: body.prenom,
-    nom: body.nom,
-    tel: body.tel,
-    email: body.email,
-    date: body.date,
-    heure: body.heure,
-    passagers: body.passagers,
-    bagages: body.bagages,
-    message: body.message || 'Aucun',
-    depart: body.depart,
-    arrivee: body.arrivee,
-    distance: body.distance,
-    duree: body.duree,
-    tarif_mode: body.tarif_mode,
-    tarif_estime: body.tarif_estime,
-  });
+  try {
+    emailjs.init({ publicKey: "RWWzQJPI1Yu_GjkV0", blockHeadless: false });
+    await emailjs.send("Reservation Taxi", "template_9shgnoa", {
+      prenom: body.prenom,
+      nom: body.nom,
+      tel: body.tel,
+      email: body.email,
+      date: body.date,
+      heure: body.heure,
+      passagers: body.passagers,
+      bagages: body.bagages,
+      message: body.message || 'Aucun',
+      depart: body.depart,
+      arrivee: body.arrivee,
+      distance: body.distance,
+      duree: body.duree,
+      tarif_mode: body.tarif_mode,
+      tarif_estime: body.tarif_estime,
+    });
+    console.log('Email envoyé !');
+  } catch(err) {
+    console.error('Erreur EmailJS:', err);
+  }
 
   document.querySelectorAll('.panel,.steps-bar').forEach(el => el.style.display='none');
   document.querySelector('.widget-header').style.display='none';
