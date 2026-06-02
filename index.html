@@ -6,7 +6,7 @@
   <title>Réservation Taxi</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBMy7RKASsSv34ghtqFXu8xj4iD-IKbCw0&libraries=places&callback=initMap" async defer></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=VOTRE_CLE_API_GOOGLE&libraries=places&callback=initMap" async defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -495,31 +495,25 @@ async function submitReservation() {
     tarif_estime: routeData.price.toFixed(2) + ' €',
   };
 
-await emailjs.init({
-  publicKey: "RwWzQJPI1Yu_GjkV0",
-  blockHeadless: false,
-});
-await emailjs.send("Reservation Taxi", "template_9shgnoa", {
-  prenom: data.prenom,
-  nom: data.nom,
-  tel: data.tel,
-  email: data.email,
-  date: data.date,
-  heure: data.heure,
-  passagers: data.passagers,
-  bagages: data.bagages,
-  message: data.message,
-  depart: data.depart,
-  arrivee: data.arrivee,
-  distance: data.distance,
-  duree: data.duree,
-  tarif_mode: data.tarif_mode,
-  tarif_estime: data.tarif_estime,
-});
-
-  console.log('📨 Réservation pour', CONFIG.email_destinataire, body);
-
-  
+  // === EMAILJS INTEGRATION ===
+  emailjs.init({ publicKey: "RWWzQJPI1Yu_GjkV0", blockHeadless: false });
+  await emailjs.send("Reservation Taxi", "template_9shgnoa", {
+    prenom: body.prenom,
+    nom: body.nom,
+    tel: body.tel,
+    email: body.email,
+    date: body.date,
+    heure: body.heure,
+    passagers: body.passagers,
+    bagages: body.bagages,
+    message: body.message || 'Aucun',
+    depart: body.depart,
+    arrivee: body.arrivee,
+    distance: body.distance,
+    duree: body.duree,
+    tarif_mode: body.tarif_mode,
+    tarif_estime: body.tarif_estime,
+  });
 
   document.querySelectorAll('.panel,.steps-bar').forEach(el => el.style.display='none');
   document.querySelector('.widget-header').style.display='none';
