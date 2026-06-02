@@ -523,6 +523,21 @@ async function submitReservation() {
     console.error('Erreur Formspree:', err);
   }
 
+  // === WHATSAPP NOTIFICATION ===
+  const msg = `🚖 Nouvelle réservation !
+👤 ${body.prenom} ${body.nom}
+📞 ${body.tel}
+📍 Départ : ${body.depart}
+🏁 Arrivée : ${body.arrivee}
+📅 ${body.date} à ${body.heure}
+📏 ${body.distance} — ${body.duree}
+💶 ${body.tarif_estime} (${body.tarif_mode})
+👥 ${body.passagers} passager(s) — 🧳 ${body.bagages} bagage(s)
+💬 ${body.message || 'Aucun message'}`;
+
+  const waUrl = `https://wa.me/33651490109?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
+
   document.querySelectorAll('.panel,.steps-bar').forEach(el => el.style.display='none');
   document.querySelector('.widget-header').style.display='none';
   document.getElementById('success-state').classList.add('visible');
