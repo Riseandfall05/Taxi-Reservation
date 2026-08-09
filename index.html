@@ -246,7 +246,7 @@
         <div class="field">
           <label>Passagers</label>
           <div class="field-inner"><span class="field-icon">👥</span>
-            <select id="inp-passagers"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+            <select id="inp-passagers"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
           </div>
         </div>
         <div class="field">
@@ -375,6 +375,24 @@ function selectVehicle(type) {
   document.getElementById('badge-pec').textContent = v.prise_en_charge.toFixed(2).replace('.',',') + ' €';
   document.getElementById('badge-jour').textContent = v.prix_jour.toFixed(2).replace('.',',') + ' € / km';
   document.getElementById('badge-nuit').textContent = v.prix_nuit.toFixed(2).replace('.',',') + ' € / km';
+
+  // Mettre à jour les options de passagers selon le véhicule
+  const sel = document.getElementById('inp-passagers');
+  sel.innerHTML = '';
+  if (type === 'idbuzz') {
+    for (let i = 2; i <= 6; i++) {
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = i;
+      sel.appendChild(opt);
+    }
+  } else {
+    for (let i = 1; i <= 4; i++) {
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = i;
+      sel.appendChild(opt);
+    }
+  }
+
   updateTarifMode();
   if (routeData.distance > 0) recalcEstimate();
 }
