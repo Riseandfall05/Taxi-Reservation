@@ -287,7 +287,7 @@
         <div class="confirm-row"><span class="key">Passagers</span><span class="val" id="c-pass"></span></div>
         <div class="confirm-row" id="c-msg-row" style="display:none;"><span class="key">Message</span><span class="val" id="c-msg"></span></div>
       </div>
-      <p style="font-size:12px;color:var(--gray-light);margin-bottom:18px;line-height:1.6;">
+      <p style="font-size:12px;color:var(--gray-light);margin-bottom:18px;line-height:1.6;" id="confirm-mention">
         En confirmant, vous acceptez d'être contacté par le chauffeur. Le tarif est une estimation — le prix final peut varier légèrement selon le trafic.
       </p>
       <div class="btn-row">
@@ -515,6 +515,14 @@ function goStep(n) {
       `${document.getElementById('inp-passagers').value} passager(s), ${document.getElementById('inp-bagages').value} bagage(s)`;
     const msg = document.getElementById('inp-message').value.trim();
     if (msg) { document.getElementById('c-msg-row').style.display='flex'; document.getElementById('c-msg').textContent=msg; }
+
+    // Mention selon le véhicule
+    const mention = document.getElementById('confirm-mention');
+    if (selectedVehicle === 'idbuzz') {
+      mention.textContent = "En confirmant, vous acceptez d'être contacté par le chauffeur. Ce véhicule est un LOTI — le tarif affiché est forfaitaire et fixe, il ne peut pas varier.";
+    } else {
+      mention.textContent = "En confirmant, vous acceptez d'être contacté par le chauffeur. Le tarif est une estimation — le prix final peut varier légèrement selon le trafic.";
+    }
   }
 
   for (let i = 1; i <= 3; i++) {
