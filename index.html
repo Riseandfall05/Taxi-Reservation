@@ -355,11 +355,14 @@ function getTarifKm() {
     const now = new Date();
     const h = now.getHours();
     const todayStr = now.toISOString().split('T')[0];
-    if (isFerie(todayStr) || h < 7 || h >= 19) return v.prix_nuit;
+    const dayOfWeek = now.getDay();
+    if (isFerie(todayStr) || dayOfWeek === 0 || h < 7 || h >= 19) return v.prix_nuit;
     return v.prix_jour;
   }
   if (isFerie(dateVal)) return v.prix_nuit;
   const h = parseInt(heureVal.split(':')[0]);
+  const dayOfWeek = new Date(dateVal).getDay(); // 0=dimanche, 6=samedi
+  if (dayOfWeek === 0) return v.prix_nuit; // Dimanche = tarif nuit
   if (h < 7 || h >= 19) return v.prix_nuit;
   return v.prix_jour;
 }
@@ -377,16 +380,17 @@ function selectVehicle(type) {
 }
 
 function updateTarifMode() {
+  const v = getVehicleConfig();
   const tarif = getTarifKm();
   const badge = document.getElementById('tarif-mode-badge');
   const text = document.getElementById('tarif-mode-text');
   badge.classList.remove('jour','nuit');
-  if (tarif === CONFIG.prix_nuit) {
+  if (tarif === v.prix_nuit) {
     badge.classList.add('nuit');
-    text.textContent = 'Tarif de nuit / jour férié (19h–7h) — 3,63 € / km';
+    text.textContent = `🌙 Tarif de nuit / dimanche / férié (19h–7h) — ${v.prix_nuit.toFixed(2).replace('.',',')} € / km`;
   } else {
     badge.classList.add('jour');
-    text.textContent = 'Tarif de jour (7h–19h) — 2,44 € / km';
+    text.textContent = `☀️ Tarif de jour (7h–19h) — ${v.prix_jour.toFixed(2).replace('.',',')} € / km`;
   }
   // Recalcul si route déjà connue
   if (routeData.distance > 0) recalcEstimate();
