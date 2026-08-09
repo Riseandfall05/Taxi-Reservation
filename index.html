@@ -277,7 +277,7 @@
         <div class="confirm-row"><span class="key">Distance</span><span class="val" id="c-dist"></span></div>
         <div class="confirm-row"><span class="key">Durée estimée</span><span class="val" id="c-dur"></span></div>
         <div class="confirm-row"><span class="key">Tarif appliqué</span><span class="val" id="c-tarif-mode"></span></div>
-        <div class="confirm-row"><span class="key">Tarif estimé</span><span class="val" id="c-price" style="color:var(--gold);font-size:16px;font-weight:700;"></span></div>
+        <div class="confirm-row"><span class="key" id="c-price-label">Tarif estimé</span><span class="val" id="c-price" style="color:var(--gold);font-size:16px;font-weight:700;"></span></div>
       </div>
       <div class="confirm-section">
         <h3>Client</h3>
@@ -524,6 +524,7 @@ function goStep(n) {
     document.getElementById('c-dur').textContent = routeData.duration;
     const v2 = getVehicleConfig();
     document.getElementById('c-vehicule').textContent = v2.label;
+    document.getElementById('c-price-label').textContent = selectedVehicle === 'idbuzz' ? 'Tarif fixe' : 'Tarif estimé';
     document.getElementById('c-tarif-mode').textContent = isNuit ? `🌙 Nuit / Jour férié (${v2.prix_nuit.toFixed(2).replace('.',',')} €/km)` : `☀️ Jour (${v2.prix_jour.toFixed(2).replace('.',',')} €/km)`;
     document.getElementById('c-price').textContent = routeData.price.toFixed(2).replace('.',',') + ' €';
     document.getElementById('c-name').textContent = `${prenom} ${nom}`;
