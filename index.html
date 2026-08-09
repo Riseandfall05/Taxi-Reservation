@@ -100,6 +100,15 @@
     @keyframes spin { to{transform:rotate(360deg)} }
     .error-msg { font-size:12px;color:#ff6b6b;margin-top:6px;display:none; }
     .error-msg.visible { display:block; }
+
+    /* VEHICLE SELECTOR */
+    .vehicle-selector { display:flex;gap:12px;padding:20px 32px;border-bottom:1px solid rgba(255,255,255,0.06); }
+    .vehicle-btn { flex:1;background:var(--surface2);border:2px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px 12px;cursor:pointer;transition:all 0.25s;text-align:center; }
+    .vehicle-btn:hover { border-color:var(--gold);background:rgba(201,168,76,0.06); }
+    .vehicle-btn.selected { border-color:var(--gold);background:rgba(201,168,76,0.12); }
+    .vehicle-btn .v-icon { font-size:28px;margin-bottom:6px; }
+    .vehicle-btn .v-name { font-size:13px;font-weight:600;color:var(--white);margin-bottom:3px; }
+    .vehicle-btn .v-cap { font-size:11px;color:var(--gray-light); }
   </style>
 </head>
 <body>
@@ -117,6 +126,20 @@
     <div class="step active" id="step1-indicator"><div class="step-dot">1</div><div class="step-label">Trajet</div></div>
     <div class="step" id="step2-indicator"><div class="step-dot">2</div><div class="step-label">Infos</div></div>
     <div class="step" id="step3-indicator"><div class="step-dot">3</div><div class="step-label">Confirm.</div></div>
+  </div>
+
+  <!-- VEHICLE SELECTOR -->
+  <div class="vehicle-selector">
+    <div class="vehicle-btn selected" id="btn-taxi" onclick="selectVehicle('taxi')">
+      <div class="v-icon">🚖</div>
+      <div class="v-name">Taxi 5 places</div>
+      <div class="v-cap">SUV</div>
+    </div>
+    <div class="vehicle-btn" id="btn-idbuzz" onclick="selectVehicle('idbuzz')">
+      <div class="v-icon">🚌</div>
+      <div class="v-name">ID Buzz 7 places</div>
+      <div class="v-cap">Grand volume</div>
+    </div>
   </div>
 
   <div class="panels">
@@ -167,9 +190,9 @@
       <div id="map"><span>🗺️ La carte apparaîtra ici après saisie des adresses</span></div>
 
       <div class="tarif-info">
-        <div class="tarif-badge"><span>Prise en charge</span><strong>2,73 €</strong></div>
-        <div class="tarif-badge"><span>Tarif jour</span><strong>2,44 € / km</strong></div>
-        <div class="tarif-badge"><span>Tarif nuit / fériés</span><strong>3,63 € / km</strong></div>
+        <div class="tarif-badge"><span>Prise en charge</span><strong id="badge-pec">2,73 €</strong></div>
+        <div class="tarif-badge"><span>Tarif jour</span><strong id="badge-jour">2,44 € / km</strong></div>
+        <div class="tarif-badge"><span>Tarif nuit / fériés</span><strong id="badge-nuit">3,63 € / km</strong></div>
       </div>
 
       <div class="estimate-card" id="estimate-card">
@@ -247,6 +270,7 @@
     <div class="panel" id="panel3">
       <div class="confirm-section">
         <h3>Trajet</h3>
+        <div class="confirm-row"><span class="key">Véhicule</span><span class="val" id="c-vehicule"></span></div>
         <div class="confirm-row"><span class="key">Départ</span><span class="val" id="c-from"></span></div>
         <div class="confirm-row"><span class="key">Arrivée</span><span class="val" id="c-to"></span></div>
         <div class="confirm-row"><span class="key">Date & heure</span><span class="val" id="c-datetime"></span></div>
@@ -288,11 +312,24 @@
 // CONFIGURATION TARIFAIRE
 // ============================================================
 const CONFIG = {
-  prise_en_charge: 2.73,
-  prix_jour: 2.44,        // 7h00 – 18h59
-  prix_nuit: 3.63,        // 19h00 – 6h59 + jours fériés
+  taxi: {
+    label: "🚖 Taxi 5 places",
+    prise_en_charge: 2.73,
+    prix_jour: 2.44,
+    prix_nuit: 3.63,
+    minimum: 0,
+  },
+  idbuzz: {
+    label: "🚐 ID Buzz 7 places",
+    prise_en_charge: 10.00,
+    prix_jour: 3.00,
+    prix_nuit: 4.50,
+    minimum: 30,
+  },
   email_destinataire: "nico05.taxi@gmail.com",
 };
+
+let selectedVehicle = 'taxi';
 
 // Jours fériés France (mise à jour annuelle recommandée)
 const FERIES = [
@@ -306,21 +343,37 @@ function isFerie(dateStr) {
   return FERIES.includes(dateStr);
 }
 
+function getVehicleConfig() {
+  return CONFIG[selectedVehicle];
+}
+
 function getTarifKm() {
+  const v = getVehicleConfig();
   const dateVal = document.getElementById('inp-date-quick').value;
   const heureVal = document.getElementById('inp-heure-quick').value;
   if (!dateVal || !heureVal) {
-    // Par défaut heure actuelle
     const now = new Date();
     const h = now.getHours();
     const todayStr = now.toISOString().split('T')[0];
-    if (isFerie(todayStr) || h < 7 || h >= 19) return CONFIG.prix_nuit;
-    return CONFIG.prix_jour;
+    if (isFerie(todayStr) || h < 7 || h >= 19) return v.prix_nuit;
+    return v.prix_jour;
   }
-  if (isFerie(dateVal)) return CONFIG.prix_nuit;
+  if (isFerie(dateVal)) return v.prix_nuit;
   const h = parseInt(heureVal.split(':')[0]);
-  if (h < 7 || h >= 19) return CONFIG.prix_nuit;
-  return CONFIG.prix_jour;
+  if (h < 7 || h >= 19) return v.prix_nuit;
+  return v.prix_jour;
+}
+
+function selectVehicle(type) {
+  selectedVehicle = type;
+  document.getElementById('btn-taxi').classList.toggle('selected', type === 'taxi');
+  document.getElementById('btn-idbuzz').classList.toggle('selected', type === 'idbuzz');
+  const v = getVehicleConfig();
+  document.getElementById('badge-pec').textContent = v.prise_en_charge.toFixed(2).replace('.',',') + ' €';
+  document.getElementById('badge-jour').textContent = v.prix_jour.toFixed(2).replace('.',',') + ' € / km';
+  document.getElementById('badge-nuit').textContent = v.prix_nuit.toFixed(2).replace('.',',') + ' € / km';
+  updateTarifMode();
+  if (routeData.distance > 0) recalcEstimate();
 }
 
 function updateTarifMode() {
@@ -413,13 +466,16 @@ function tryCalculateRoute() {
 function recalcEstimate() {
   const km = routeData.distance;
   const tarifKm = getTarifKm();
-  const price = CONFIG.prise_en_charge + (km * tarifKm);
+  const v = getVehicleConfig();
+  let price = v.prise_en_charge + (km * tarifKm);
+  if (v.minimum > 0 && price < v.minimum) price = v.minimum;
   routeData.price = price;
   routeData.tarifKm = tarifKm;
-  const isNuit = tarifKm === CONFIG.prix_nuit;
+  const isNuit = tarifKm === v.prix_nuit;
+  const minNote = v.minimum > 0 ? ` (min. ${v.minimum}€)` : '';
   document.getElementById('estimate-price').textContent = price.toFixed(2).replace('.',',') + ' €';
   document.getElementById('estimate-detail').textContent =
-    `2,73 € + ${km.toFixed(1)} km × ${tarifKm.toFixed(2).replace('.',',')} € (${isNuit ? 'tarif nuit/férié' : 'tarif jour'})`;
+    `${v.prise_en_charge.toFixed(2).replace('.',',')}€ + ${km.toFixed(1)} km × ${tarifKm.toFixed(2).replace('.',',')} € (${isNuit ? 'tarif nuit/férié' : 'tarif jour'})${minNote}`;
   document.getElementById('estimate-distance').textContent = routeData.distanceText;
   document.getElementById('estimate-duration').textContent = routeData.duration;
   document.getElementById('route-from').textContent = routeData.origin;
@@ -436,14 +492,17 @@ function goStep(n) {
     const dateVal = document.getElementById('inp-date-quick').value;
     const heureVal = document.getElementById('inp-heure-quick').value;
     const fmt = d => d.split('-').reverse().join('/');
-    const isNuit = routeData.tarifKm === CONFIG.prix_nuit;
+    const v = getVehicleConfig();
+    const isNuit = routeData.tarifKm === v.prix_nuit;
 
     document.getElementById('c-from').textContent = routeData.origin;
     document.getElementById('c-to').textContent = routeData.dest;
     document.getElementById('c-datetime').textContent = `${fmt(dateVal)} à ${heureVal || '—'}`;
     document.getElementById('c-dist').textContent = `${routeData.distanceText} (${routeData.distance.toFixed(1)} km)`;
     document.getElementById('c-dur').textContent = routeData.duration;
-    document.getElementById('c-tarif-mode').textContent = isNuit ? '🌙 Nuit / Jour férié (3,63 €/km)' : '☀️ Jour (2,44 €/km)';
+    const v2 = getVehicleConfig();
+    document.getElementById('c-vehicule').textContent = v2.label;
+    document.getElementById('c-tarif-mode').textContent = isNuit ? `🌙 Nuit / Jour férié (${v2.prix_nuit.toFixed(2).replace('.',',')} €/km)` : `☀️ Jour (${v2.prix_jour.toFixed(2).replace('.',',')} €/km)`;
     document.getElementById('c-price').textContent = routeData.price.toFixed(2).replace('.',',') + ' €';
     document.getElementById('c-name').textContent = `${prenom} ${nom}`;
     document.getElementById('c-tel').textContent = tel;
@@ -474,7 +533,7 @@ async function submitReservation() {
   const dateVal = document.getElementById('inp-date-quick').value;
   const heureVal = document.getElementById('inp-heure-quick').value;
   const fmt = d => d.split('-').reverse().join('/');
-  const isNuit = routeData.tarifKm === CONFIG.prix_nuit;
+  const isNuit = routeData.tarifKm === getVehicleConfig().prix_nuit;
 
   const body = {
     prenom: document.getElementById('inp-prenom').value,
@@ -490,7 +549,8 @@ async function submitReservation() {
     arrivee: routeData.dest,
     distance: routeData.distanceText,
     duree: routeData.duration,
-    tarif_mode: isNuit ? 'Nuit / Jour férié (3,63 €/km)' : 'Jour (2,44 €/km)',
+    vehicule: getVehicleConfig().label,
+    tarif_mode: isNuit ? `Nuit / Jour férié (${getVehicleConfig().prix_nuit.toFixed(2).replace('.',',')} €/km)` : `Jour (${getVehicleConfig().prix_jour.toFixed(2).replace('.',',')} €/km)`,
     tarif_estime: routeData.price.toFixed(2) + ' €',
   };
 
@@ -525,6 +585,7 @@ async function submitReservation() {
 
   // === WHATSAPP NOTIFICATION ===
   const msg = `🚖 Nouvelle réservation !
+🚗 Véhicule : ${body.vehicule}
 👤 ${body.prenom} ${body.nom}
 📞 ${body.tel}
 📍 Départ : ${body.depart}
